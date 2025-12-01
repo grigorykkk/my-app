@@ -1,6 +1,6 @@
 // App.jsx
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 import useTechnologies from './hooks/useTechnologies';
@@ -238,6 +238,16 @@ function AppContent() {
 }
 
 function App() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return null;
+  }
+
   return (
     <ThemeProviderWithToggle>
       <Router>
