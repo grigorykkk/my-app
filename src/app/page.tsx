@@ -18,6 +18,62 @@ import SettingsPage from './pages/SettingsPage';
 import TechnologyForm from './forms/TechnologyForm';
 import BulkStatusEditor from './components/BulkStatusEditor';
 
+type TechnologyStatus = 'not-started' | 'in-progress' | 'completed';
+
+type Technology = {
+  id: number;
+  title: string;
+  description: string;
+  status: TechnologyStatus;
+  notes?: string;
+  category?: string;
+  difficulty?: string;
+  deadline?: string;
+  resources?: string[];
+};
+
+type TechnologyInput = Omit<Technology, 'id' | 'status'> &
+  Partial<Pick<Technology, 'id' | 'status' | 'notes' | 'resources'>>;
+
+type UseTechnologiesResult = {
+  technologies: Technology[];
+  setTechnologies: React.Dispatch<React.SetStateAction<Technology[]>>;
+  updateStatus: (techId: number, newStatus: TechnologyStatus) => void;
+  updateNotes: (techId: number, newNotes: string) => void;
+  addTechnology: (tech: TechnologyInput) => void;
+  bulkUpdateStatus: (ids: number[], status: TechnologyStatus) => void;
+  progress: number;
+  stats: {
+    total: number;
+    completed: number;
+    inProgress: number;
+    notStarted: number;
+  };
+};
+
+declare global {
+  interface Window {
+    notify?: {
+      success: (message: string) => void;
+      info: (message: string) => void;
+      warning: (message: string) => void;
+      error: (message: string) => void;
+    };
+  }
+}
+
+const isTechnologyArray = (value: unknown): value is Technology[] =>
+  Array.isArray(value) &&
+  value.every(
+    (item) =>
+      item &&
+      typeof item === 'object' &&
+      'id' in item &&
+      'title' in item &&
+      'description' in item &&
+      'status' in item
+  );
+
 function AppContent() {
   const {
     technologies,
@@ -28,7 +84,7 @@ function AppContent() {
     bulkUpdateStatus,
     progress,
     stats,
-  } = useTechnologies();
+  } = useTechnologies() as UseTechnologiesResult;
 
   const markAllCompleted = () => {
     setTechnologies((prev) =>
@@ -44,11 +100,11 @@ function AppContent() {
     window.notify?.info('Все статусы сброшены');
   };
 
-  const handleRandomPick = (tech) => {
+  const handleRandomPick = (tech: Technology) => {
     window.notify?.info(`Следующая технология: ${tech.title}`);
   };
 
-  const handleAddTechnology = (data) => {
+  const handleAddTechnology = (data: TechnologyInput) => {
     addTechnology(data);
     window.notify?.success('Технология добавлена');
   };
@@ -76,13 +132,16 @@ function AppContent() {
     }
   };
 
-  const handleImportTechnologies = (file) => {
+  const handleImportTechnologies = (file: File | null) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(reader.result ?? '[]');
-        if (!Array.isArray(parsed)) {
+        if (typeof reader.result !== 'string') {
+          throw new Error('Некорректный формат JSON');
+        }
+        const parsed = JSON.parse(reader.result);
+        if (!isTechnologyArray(parsed)) {
           throw new Error('Ожидается массив технологий');
         }
         setTechnologies(parsed);
